@@ -140,7 +140,7 @@ For more details, see https://package.elm-lang.org/packages/lue-bird/elm-review-
 
         Node _ nonFunctionOrValueOrCaseOf ->
             nonFunctionOrValueOrCaseOf
-                |> subExpressionsThatCanContainVariablesOrCaseOfs
+                |> subExpressionsExceptFunctionReference
                 |> listFirstJustMap (\sub -> recursiveExpressionVisitor context sub)
 
 
@@ -240,11 +240,10 @@ matchableVariablesInExpression =
                         Set.empty
 
 
-{-| Get all immediate child expressions of an expression but not stuff like functions or `{ this | ... }`
-because they can never be a `case .. of` or a variable.
+{-| Get all immediate child expressions of an expression but not functions like `String.toList` in `String.toList string`
 -}
-subExpressionsThatCanContainVariablesOrCaseOfs : Expression -> List (Node Expression)
-subExpressionsThatCanContainVariablesOrCaseOfs expression =
+subExpressionsExceptFunctionReference : Expression -> List (Node Expression)
+subExpressionsExceptFunctionReference expression =
     case expression of
         Expression.LetExpression letBlock ->
             letBlock.declarations
@@ -269,11 +268,12 @@ subExpressionsThatCanContainVariablesOrCaseOfs expression =
         Expression.RecordExpr fields ->
             fields |> List.map (\(Node _ ( _, value )) -> value)
 
-        Expression.RecordUpdateExpression _ updaters ->
-            updaters |> List.map (\(Node _ ( _, newValue )) -> newValue)
+        Expression.RecordUpdateExpression recordToUpdate updaters ->
+            Node.map (Expression.FunctionOrValue []) recordToUpdate
+                :: (updaters |> List.map (\(Node _ ( _, newValue )) -> newValue))
 
-        Expression.RecordAccess _ _ ->
-            []
+        Expression.RecordAccess recordToAccess _ ->
+            [ recordToAccess ]
 
         Expression.Application [] ->
             []

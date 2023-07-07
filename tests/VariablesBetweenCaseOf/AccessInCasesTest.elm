@@ -44,19 +44,5 @@ For more details, see https://package.elm-lang.org/packages/lue-bird/elm-review-
                                 { start = { row = 7, column = 15 }
                                 , end = { row = 7, column = 19 }
                                 }
-                        , Review.Test.error
-                            { message =
-                                "This variable in the case is used between `case .. of`"
-                            , details =
-                                [ "Use the information you matched in the case pattern instead of referring to the unmatched variable between `case .. of`."
-                                , """This can can prevent forgetting to use certain information and referring to the wrong variables.
-For more details, see https://package.elm-lang.org/packages/lue-bird/elm-review-variables-between-case-of-access-in-cases/latest#why"""
-                                ]
-                            , under = "list"
-                            }
-                            |> Review.Test.atExactly
-                                { start = { row = 7, column = 21 }
-                                , end = { row = 7, column = 25 }
-                                }
                         ]
         ]

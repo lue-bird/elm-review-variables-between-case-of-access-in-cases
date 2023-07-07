@@ -8,7 +8,6 @@ module VariablesBetweenCaseOf.AccessInCases exposing (forbid)
 
 import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import RangeDict exposing (RangeDict)
 import Review.Rule as Rule exposing (Rule)
 import Set exposing (Set)
 
@@ -80,86 +79,69 @@ For more details, check [the readme](https://package.elm-lang.org/packages/lue-b
 forbid : Rule
 forbid =
     Rule.newModuleRuleSchemaUsingContextCreator "VariablesBetweenCaseOf.AccessInCases.forbid" initialContext
-        |> Rule.withExpressionEnterVisitor
-            (\expressionNode context ->
-                context |> expressionEnterVisitor expressionNode
-            )
-        |> Rule.withExpressionExitVisitor
-            (\expressionNode context ->
-                ( [], context |> expressionExitVisitor expressionNode )
+        |> Rule.withSimpleExpressionVisitor
+            (\expressionNode ->
+                expressionVisitor expressionNode
             )
         |> Rule.fromModuleRuleSchema
 
 
 type alias Context =
-    { variablesBetweenCaseOf : RangeDict (Set String) }
+    ()
 
 
 initialContext : Rule.ContextCreator () Context
 initialContext =
-    Rule.initContextCreator
-        (\() ->
-            { variablesBetweenCaseOf = RangeDict.empty }
-        )
+    Rule.initContextCreator identity
 
 
-expressionExitVisitor : Node Expression -> Context -> Context
-expressionExitVisitor expressionNode =
+expressionVisitor : Node Expression -> List (Rule.Error {})
+expressionVisitor expressionNode =
+    case recursiveExpressionVisitor { variablesBetweenCaseOf = Set.empty } expressionNode of
+        Nothing ->
+            []
+
+        Just error ->
+            [ error ]
+
+
+recursiveExpressionVisitor : { variablesBetweenCaseOf : Set String } -> Node Expression -> Maybe (Rule.Error {})
+recursiveExpressionVisitor context expressionNode =
     case expressionNode of
-        Node caseOfRange (Expression.CaseExpression _) ->
-            \context ->
-                { context
-                    | variablesBetweenCaseOf =
-                        context.variablesBetweenCaseOf
-                            |> RangeDict.remove caseOfRange
-                }
-
-        Node _ _ ->
-            identity
-
-
-expressionEnterVisitor : Node Expression -> Context -> ( List (Rule.Error {}), Context )
-expressionEnterVisitor expressionNode =
-    case expressionNode of
-        Node caseOfRange (Expression.CaseExpression caseOf) ->
-            \context ->
-                ( []
-                , { context
-                    | variablesBetweenCaseOf =
-                        context.variablesBetweenCaseOf
-                            |> RangeDict.insert caseOfRange
-                                (caseOf.expression |> Node.value |> matchableVariablesInExpression)
-                  }
+        Node _ (Expression.CaseExpression caseOf) ->
+            listFirstJustMap
+                (\( Node _ _, caseExpression ) ->
+                    recursiveExpressionVisitor
+                        { variablesBetweenCaseOf =
+                            context.variablesBetweenCaseOf
+                                |> Set.union
+                                    (caseOf.expression |> Node.value |> matchableVariablesInExpression)
+                        }
+                        caseExpression
                 )
+                caseOf.cases
 
         Node variableRange (Expression.FunctionOrValue [] variableName) ->
-            \context ->
-                ( let
-                    accessedBetweenCaseOf : Bool
-                    accessedBetweenCaseOf =
-                        RangeDict.any (Set.member variableName)
-                            context.variablesBetweenCaseOf
-                  in
-                  if accessedBetweenCaseOf then
-                    [ Rule.error
-                        { message =
-                            "This variable in the case is used between `case .. of`"
-                        , details =
-                            [ "Use the information you matched in the case pattern instead of referring to the unmatched variable between `case .. of`."
-                            , """This can can prevent forgetting to use certain information and referring to the wrong variables.
+            if Set.member variableName context.variablesBetweenCaseOf then
+                Rule.error
+                    { message =
+                        "This variable in the case is used between `case .. of`"
+                    , details =
+                        [ "Use the information you matched in the case pattern instead of referring to the unmatched variable between `case .. of`."
+                        , """This can can prevent forgetting to use certain information and referring to the wrong variables.
 For more details, see https://package.elm-lang.org/packages/lue-bird/elm-review-variables-between-case-of-access-in-cases/latest#why"""
-                            ]
-                        }
-                        variableRange
-                    ]
+                        ]
+                    }
+                    variableRange
+                    |> Just
 
-                  else
-                    []
-                , context
-                )
+            else
+                Nothing
 
-        Node _ _ ->
-            \context -> ( [], context )
+        Node _ nonFunctionOrValueOrCaseOf ->
+            nonFunctionOrValueOrCaseOf
+                |> subExpressionsThatCanContainVariablesOrCaseOfs
+                |> listFirstJustMap (\sub -> recursiveExpressionVisitor context sub)
 
 
 matchableVariablesInExpression : Expression -> Set String
@@ -240,16 +222,16 @@ matchableVariablesInExpression =
                 inParens |> matchableVariablesInExpression
 
             Expression.TupledExpression parts ->
-                parts |> setUnionMap (\(Node _ el) -> el |> matchableVariablesInExpression)
+                parts |> listSetUnionMap (\(Node _ el) -> el |> matchableVariablesInExpression)
 
             Expression.ListExpr elements ->
-                elements |> setUnionMap (\(Node _ el) -> el |> matchableVariablesInExpression)
+                elements |> listSetUnionMap (\(Node _ el) -> el |> matchableVariablesInExpression)
 
             Expression.Application (applied :: arguments) ->
                 case applied |> Node.value of
                     Expression.FunctionOrValue _ appliedName ->
                         if isVariantName appliedName then
-                            arguments |> setUnionMap (\(Node _ el) -> el |> matchableVariablesInExpression)
+                            arguments |> listSetUnionMap (\(Node _ el) -> el |> matchableVariablesInExpression)
 
                         else
                             Set.empty
@@ -258,13 +240,98 @@ matchableVariablesInExpression =
                         Set.empty
 
 
-setUnionMap : (a -> Set comparable) -> List a -> Set comparable
-setUnionMap change =
-    List.foldl
-        (\el soFar ->
-            Set.union (change el) soFar
-        )
-        Set.empty
+{-| Get all immediate child expressions of an expression but not stuff like functions or `{ this | ... }`
+because they can never be a `case .. of` or a variable.
+-}
+subExpressionsThatCanContainVariablesOrCaseOfs : Expression -> List (Node Expression)
+subExpressionsThatCanContainVariablesOrCaseOfs expression =
+    case expression of
+        Expression.LetExpression letBlock ->
+            letBlock.declarations
+                |> List.map Node.value
+                |> List.map
+                    (\letDeclaration ->
+                        case letDeclaration of
+                            Expression.LetFunction { declaration } ->
+                                declaration |> Node.value |> .expression
+
+                            Expression.LetDestructuring _ expression_ ->
+                                expression_
+                    )
+                |> (::) letBlock.expression
+
+        Expression.ListExpr expressions ->
+            expressions
+
+        Expression.TupledExpression expressions ->
+            expressions
+
+        Expression.RecordExpr fields ->
+            fields |> List.map (\(Node _ ( _, value )) -> value)
+
+        Expression.RecordUpdateExpression _ updaters ->
+            updaters |> List.map (\(Node _ ( _, newValue )) -> newValue)
+
+        Expression.RecordAccess _ _ ->
+            []
+
+        Expression.Application [] ->
+            []
+
+        Expression.Application (_ :: arguments) ->
+            arguments
+
+        Expression.CaseExpression caseBlock ->
+            caseBlock.expression
+                :: (caseBlock.cases |> List.map (\( _, caseExpression ) -> caseExpression))
+
+        Expression.OperatorApplication _ _ e1 e2 ->
+            [ e1, e2 ]
+
+        Expression.IfBlock condition then_ else_ ->
+            [ condition, then_, else_ ]
+
+        Expression.LambdaExpression lambda ->
+            [ lambda.expression ]
+
+        Expression.ParenthesizedExpression expressionInParens ->
+            [ expressionInParens ]
+
+        Expression.Negation expressionInNegation ->
+            [ expressionInNegation ]
+
+        Expression.UnitExpr ->
+            []
+
+        Expression.Integer _ ->
+            []
+
+        Expression.Hex _ ->
+            []
+
+        Expression.Floatable _ ->
+            []
+
+        Expression.Literal _ ->
+            []
+
+        Expression.CharLiteral _ ->
+            []
+
+        Expression.GLSLExpression _ ->
+            []
+
+        Expression.RecordAccessFunction _ ->
+            []
+
+        Expression.FunctionOrValue _ _ ->
+            []
+
+        Expression.Operator _ ->
+            []
+
+        Expression.PrefixOperator _ ->
+            []
 
 
 {-| I know that this will give us false negatives but elm's checks are rather weird so... better than false positives
@@ -289,3 +356,28 @@ isVariableName name =
 
         Just ( headChar, _ ) ->
             headChar |> Char.isLower
+
+
+listSetUnionMap : (a -> Set comparable) -> List a -> Set comparable
+listSetUnionMap change =
+    List.foldl
+        (\el soFar ->
+            Set.union (change el) soFar
+        )
+        Set.empty
+
+
+listFirstJustMap : (a -> Maybe b) -> (List a -> Maybe b)
+listFirstJustMap elementToMaybe =
+    \list ->
+        case list of
+            [] ->
+                Nothing
+
+            head :: tail ->
+                case elementToMaybe head of
+                    Just found ->
+                        Just found
+
+                    Nothing ->
+                        listFirstJustMap elementToMaybe tail

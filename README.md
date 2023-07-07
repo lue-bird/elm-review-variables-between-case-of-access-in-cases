@@ -91,20 +91,20 @@ If you had just always used the error from the specific case, ignoring the error
 
 I see code _like_ in the example below a lot a lot.
 ```elm
-highestScoreUi =
-    case list of
+highestScoreUi scores =
+    case scores of
         [] ->
             textUi "no scores, yet"
         
         head :: _ ->
-            case List.minimum list of
+            case List.maximum list of
                 -- This can never happen
                 Nothing ->
                     -- so we'll just use the head
                     scoreUi head
                 
-                Just minimumFound ->
-                    scoreUi minimumFound
+                Just highestFound ->
+                    scoreUi highestFound
 ```
 Don't look away, I know you've written code like that.
 Let's just blame it on thinking patterns from other languages where you can't safely represent your data

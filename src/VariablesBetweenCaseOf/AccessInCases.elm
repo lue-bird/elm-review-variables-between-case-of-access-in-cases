@@ -143,7 +143,7 @@ expressionEnterVisitor expressionNode =
                   if accessedBetweenCaseOf then
                     [ Rule.error
                         { message =
-                            "this variable in the case is used between `case .. of`"
+                            "This variable in the case is used between `case .. of`"
                         , details =
                             [ "Use the information you matched in the case pattern instead of referring to the unmatched variable between `case .. of`."
                             , """This can can prevent forgetting to use certain information and referring to the wrong variables.

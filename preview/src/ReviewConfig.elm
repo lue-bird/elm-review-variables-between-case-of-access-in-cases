@@ -11,11 +11,11 @@ when inside the directory containing this file.
 
 -}
 
-import VariablesBetweenCaseOf.AccessInCases
 import Review.Rule exposing (Rule)
+import VariablesBetweenCaseOf.AccessInCases
 
 
 config : List Rule
 config =
-    [ VariablesBetweenCaseOf.AccessInCases.rule
+    [ VariablesBetweenCaseOf.AccessInCases.forbid
     ]

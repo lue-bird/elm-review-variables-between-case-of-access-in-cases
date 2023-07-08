@@ -1,6 +1,6 @@
-# [elm-review-variables-between-case-of-access-in-cases](https://package.elm-lang.org/packages/lue-bird/elm-review-variables-between-case-of-access-in-cases/1.0.0)
+# [elm-review-variables-between-case-of-access-in-cases](https://package.elm-lang.org/packages/lue-bird/elm-review-variables-between-case-of-access-in-cases/1.0.1/)
 
-Provides the [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rule [`VariablesBetweenCaseOf.AccessInCases.forbid`](https://package.elm-lang.org/packages/lue-bird/elm-review-variables-between-case-of-access-in-cases/1.0.0/VariablesBetweenCaseOf-AccessInCases#forbid)
+Provides the [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rule [`VariablesBetweenCaseOf.AccessInCases.forbid`](https://package.elm-lang.org/packages/lue-bird/elm-review-variables-between-case-of-access-in-cases/1.0.1/VariablesBetweenCaseOf-AccessInCases/#forbid)
 which reports when a variable between `case .. of` is used in any of the cases.
 
 ### reported

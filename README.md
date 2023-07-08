@@ -65,7 +65,6 @@ case description_ of
 
 Oops, it's the wrong description variable...
 
-
 ### ignoring information you should use
 
 ```elm
@@ -90,41 +89,46 @@ If you had just always used the error from the specific case, ignoring the error
 ### not using the extra guarantees
 
 I see code _like_ in the example below a lot a lot.
+
 ```elm
 highestScoreUi scores =
     case scores of
         [] ->
             textUi "no scores, yet"
-        
+
         head :: _ ->
             case List.maximum list of
                 -- This can never happen
                 Nothing ->
                     -- so we'll just use the head
                     scoreUi head
-                
+
                 Just highestFound ->
                     scoreUi highestFound
 ```
+
 Don't look away, I know you've written code like that.
 Let's just blame it on thinking patterns from other languages where you can't safely represent your data
 and elm for providing so many `-> Maybe` operations.
 
 Unwrap late and use the extra information of your specific case:
+
 ```elm
 highestScoreUi =
     case list of
         [] ->
             textUi "no scores, yet"
-        
+
         head :: tail ->
             scoreUi (List.Nonempty.minimum ( head, tail ))
 ```
+
 If you think this is not possible in your case, write me anytime @lue on slack!
 
 For example: "But how would I do a case on `Dict`-emptiness?
-  - → There are non-empty dict implementations with `fromDict`
-  - → there are more convenient representations like [`KeysSet`](https://dark.elm.dmy.fr/packages/lue-bird/elm-keysset/latest/) that you can actually case on
+
+- → There are non-empty dict implementations with `fromDict`
+- → there are more convenient representations like [`KeysSet`](https://dark.elm.dmy.fr/packages/lue-bird/elm-keysset/latest/) that you can actually case on
 
 Maybe this is not your grind, but I think precise data modeling in elm is fun.
 Give it a go even if you think it's not practical and see what happens!
@@ -145,6 +149,6 @@ import Review.Rule exposing (Rule)
 
 config : List Rule
 config =
-    [ VariablesBetweenCaseOf.AccessInCases.rule
+    [ VariablesBetweenCaseOf.AccessInCases.forbid
     ]
 ```

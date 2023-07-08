@@ -145,6 +145,6 @@ import Review.Rule exposing (Rule)
 
 config : List Rule
 config =
-    [ VariablesBetweenCaseOf.AccessInCases.rule
+    [ VariablesBetweenCaseOf.AccessInCases.forbid
     ]
 ```

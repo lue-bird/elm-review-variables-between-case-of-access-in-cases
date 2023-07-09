@@ -13,8 +13,28 @@ all =
                 """module A exposing (..)
 a =
     case identity () of
-        () ->
-            identity ()
+        a ->
+            identity a
+"""
+                    |> Review.Test.run forbid
+                    |> Review.Test.expectNoErrors
+        , test "should not report an error when cased variable is a record access where the record variable is used in the case" <|
+            \() ->
+                """module A exposing (..)
+a =
+    case record.a of
+        a ->
+            record
+"""
+                    |> Review.Test.run forbid
+                    |> Review.Test.expectNoErrors
+        , test "should not report an error when cased variable is a record set where the record variable is used in the case" <|
+            \() ->
+                """module A exposing (..)
+a =
+    case { record | a = a } of
+        a ->
+            record
 """
                     |> Review.Test.run forbid
                     |> Review.Test.expectNoErrors

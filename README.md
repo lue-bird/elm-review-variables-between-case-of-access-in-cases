@@ -96,12 +96,12 @@ highestScoreUi scores =
         [] ->
             textUi "no scores, yet"
         
-        head :: _ ->
-            case List.maximum list of
+        scoresHead :: _ ->
+            case List.maximum scores of
                 -- This can never happen
                 Nothing ->
                     -- so we'll just use the head
-                    scoreUi head
+                    scoreUi scoresHead
                 
                 Just highestFound ->
                     scoreUi highestFound
@@ -113,12 +113,12 @@ and elm for providing so many `-> Maybe` operations.
 Unwrap late and use the extra information of your specific case:
 ```elm
 highestScoreUi =
-    case list of
+    case scores of
         [] ->
             textUi "no scores, yet"
         
-        head :: tail ->
-            scoreUi (List.Nonempty.minimum ( head, tail ))
+        scoresHead :: scoresTail ->
+            scoreUi (List.Nonempty.minimum ( scoresHead, scoresTail ))
 ```
 If you think this is not possible in your case, write me anytime @lue on slack!
 

@@ -21,8 +21,8 @@ case arguments of
     [] ->
         "no arguments"
 
-    firstArg :: args1Up ->
-        (firstArg :: args1Up) |> String.join ", "
+    firstArgument :: secondArgumentUp ->
+        (firstArgument :: secondArgumentUp) |> String.join ", "
 ```
 
 ## Why
@@ -65,6 +65,23 @@ case description_ of
 
 Oops, it's the wrong description variable...
 
+Another example that I've actually written:
+```elm
+listRemoveAt index list =
+    ...
+    case list of
+        [] ->
+            []
+
+        head :: tail ->
+            case index of
+                0 ->
+                    tail
+
+                indexAtLeast1 ->
+                    head :: (list |> listRemoveAt (indexAtLeast1 - 1))
+```
+Look at the last line where we call `listRemoveAt` recursively with the original list instead of `tail`.
 
 ### ignoring information you should use
 
@@ -89,7 +106,7 @@ If you had just always used the error from the specific case, ignoring the error
 
 ### not using the extra guarantees
 
-I see code _like_ in the example below a lot a lot.
+I see code _like_ below a lot.
 ```elm
 highestScoreUi scores =
     case scores of
@@ -100,7 +117,7 @@ highestScoreUi scores =
             case List.maximum scores of
                 -- This can never happen
                 Nothing ->
-                    -- so we'll just use the head
+                    -- so we'll just use the head or whatever
                     scoreUi scoresHead
                 
                 Just highestFound ->

@@ -3,7 +3,7 @@
     "name": "lue-bird/elm-review-variables-between-case-of-access-in-cases",
     "summary": "reports when a variable between `case .. of` is used in any of the cases",
     "license": "MIT",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "exposed-modules": [
         "VariablesBetweenCaseOf.AccessInCases"
     ],
